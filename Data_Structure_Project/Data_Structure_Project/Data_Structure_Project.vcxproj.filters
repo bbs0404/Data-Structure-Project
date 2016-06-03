@@ -19,4 +19,29 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\..\..\Desktop\friend.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="friend2.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="user2.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="..\..\..\..\Desktop\user.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="word.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Word.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="User.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

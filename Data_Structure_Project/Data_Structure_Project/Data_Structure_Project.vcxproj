@@ -144,6 +144,17 @@
   <ItemGroup>
     <ClCompile Include="main.c" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\..\..\Desktop\friend.txt" />
+    <Text Include="..\..\..\..\Desktop\user.txt" />
+    <Text Include="friend2.txt" />
+    <Text Include="user2.txt" />
+    <Text Include="word.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="User.h" />
+    <ClInclude Include="Word.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
