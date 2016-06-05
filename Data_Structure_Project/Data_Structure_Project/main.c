@@ -126,13 +126,10 @@ void init_Adj_Word(Adj_Word * adj) {
 	adj->next = NULL;
 }
 
-void add_Vertex_Word(BST_Word * tree, Vertex_Word * b, char * tweet) {
-	Word * word = malloc(sizeof(Word));
+void add_Vertex_Word(BST_Word * tree, Vertex_Word * b) {
 	Vertex_Word * a = tree->root;
 	Vertex_Word * tmp;
-
-	b->word = word;
-	strcpy(word->word, tweet);
+;
 	if (tree->root == NULL) {
 		tree->root = b;
 		return;
@@ -167,9 +164,85 @@ Vertex_Word * BSTsearchWord(BST_Word* tree, char* word) {
 	return a;
 }
 
+void DeleteVertex_User(BST_User * tree, Vertex_User * vertex) {
+	if (vertex->left == NULL && vertex->right == NULL) {
+		if (vertex->parent->left == vertex)
+			vertex->parent->left = NULL;
+		else
+			vertex->parent->right = NULL;
+	}
+	else if (vertex->left == NULL) {
+		if (vertex->parent->left == vertex)
+			vertex->parent->left = vertex->right;
+		else
+			vertex->parent->right = vertex->right;
+	}
+	else if (vertex->right == NULL) {
+		if (vertex->parent->left == vertex)
+			vertex->parent->left = vertex->left;
+		else
+			vertex->parent->right = vertex->left;
+	}
+	else {
+
+	}
+	Adj_User * tmp, * tmp2 = vertex->first;
+	for (tmp = tmp2; tmp; tmp = tmp2) {
+		tmp2 = tmp2->next;
+		free(tmp);
+	}
+	free(vertex);
+}
+
+void FindMostTweet(BST_Word * tree, Vertex_Word * vertices[5], Vertex_Word * vertex) {
+	int i, isSame = 0;
+	if (vertex != NULL) {
+		for (i = 0; vertices[i] && i < 5; ++i) {
+			if (strcmp(vertices[i]->word->word, vertex->word->word) == 0) {
+				isSame = 1;
+				break;
+			}
+			if (vertex->word->count > vertices[i]->word->count) {
+				for (int j = 5; j > i; --j) {
+					vertices[j] = vertices[j - 1];
+				}
+				vertices[i] = vertex;
+				break;
+			}
+		}
+		if (i < 5 && !isSame) {
+			vertices[i] = vertex;
+		}
+		FindMostTweet(tree, vertices, vertex->left);
+		FindMostTweet(tree, vertices, vertex->right);
+	}
+}
+
+void FindMostUser(BST_User * tree, Vertex_User* vertices[5], Vertex_User * vertex) {
+	int i, isSame = 0;
+	if (vertex != NULL) {
+		for (i = 0; vertices[i] && i < 5; ++i) {
+			if (vertex->user->tweets > vertices[i]->user->tweets) {
+				for (int j = 5; j > i; --j) {
+					vertices[j] = vertices[j - 1];
+				}
+				vertices[i] = vertex;
+				break;
+			}
+		}
+		if (i < 5 && !isSame) {
+			vertices[i] = vertex;
+		}
+		FindMostUser(tree, vertices, vertex->left);
+		FindMostUser(tree, vertices, vertex->right);
+	}
+}
+
 int main() {
 	BST_User * UserTree = malloc(sizeof(BST_User));
 	BST_Word * WordTree = malloc(sizeof(BST_Word));
+	Vertex_Word * mostTweeted[5] = { 0 };
+	Vertex_User * mostUsers[5] = { 0 };
 	UserTree->root = WordTree->root = NULL;
 	while (1) {
 		printf("0. Read data files\n1. display statistics\n2. Top 5 most tweeted words");
@@ -177,6 +250,7 @@ int main() {
 		printf("6. Delete all mentions of a word\n7. Delete all users who mentioned a word\n8. Find strongly connected components");
 		printf("9. Find shortest path from a given user\n\99. Quit\nSelect Menu: ");
 		int menu, usercount, friendcount, tweetcount;
+		Vertex_Word * VertexWord;
 		char str[30];
 		FILE * fp;
 		scanf("%d", &menu);
@@ -192,8 +266,7 @@ int main() {
 			while (fscanf(fp,"%s", ID) != -1) {
 				fgets(dummy, sizeof(dummy),fp);
 				fgets(signUpDate, sizeof(signUpDate),fp);
-				fgets(screenName, sizeof(screenName),fp);
-
+				fscanf(fp, "%s", screenName);
 				Vertex_User * vertex = malloc(sizeof(Vertex_User));
 				init_Vertex_User(vertex);
 				add_Vertex_User(UserTree, vertex, ID);
@@ -203,6 +276,7 @@ int main() {
 			}
 			fclose(fp);
 			printf("done!\n");
+
 			printf("fetching data from 'friend.txt'...");
 			fp = fopen("friend.txt", "r");
 			//friend.txt
@@ -224,41 +298,93 @@ int main() {
 			}
 			fclose(fp);
 			printf("done!\n");
+
 			printf("fetching data from 'word.txt'...");
 			fp = fopen("word.txt", "r");
 			while (fscanf(fp,"%s", ID) != -1) {
+				int isSame = 0;
 				fgets(dummy, sizeof(dummy),fp);
 				fgets(signUpDate, sizeof(signUpDate),fp);
-				fgets(tweet, sizeof(tweet),fp);
+				fscanf(fp, "%s", tweet);
+
 				Vertex_User * userVertex = BSTsearchID(UserTree, ID);
 				if (userVertex == NULL)
 					continue;
-				Vertex_Word * wordVertex = malloc(sizeof(Vertex_Word));
-				Adj_Word * adj = malloc(sizeof(Adj_Word)), * tmp;
-				init_Vertex_Word(wordVertex);
-				init_Adj_Word(adj);
-
-				tmp = wordVertex->first;
-				wordVertex->first = adj;
-				adj->next = tmp;
-
+				Vertex_Word * wordVertex = BSTsearchWord(WordTree, tweet);
+				Adj_Word * adj, *tmp;
+				if (wordVertex == NULL) {
+					wordVertex = malloc(sizeof(Vertex_Word));
+					init_Vertex_Word(wordVertex);
+					Word * word = malloc(sizeof(Word));
+					wordVertex->word = word;
+					word->count = 0;
+					strcpy(word->word, tweet);
+					add_Vertex_Word(WordTree, wordVertex);
+				}
+				else {
+					adj = wordVertex->first;
+					for (tmp = adj; tmp; tmp = tmp->next) {
+						if (strcmp(tmp->ID, ID) == 0) {
+							isSame = 1;
+							break;
+						}
+					}
+				}
+				if (!isSame) {
+					adj = malloc(sizeof(Adj_Word));
+					init_Adj_Word(adj);
+					tmp = wordVertex->first;
+					wordVertex->first = adj;
+					adj->next = tmp;
+					strcpy(wordVertex->first->ID, ID);
+				}
 				++userVertex->user->tweets;
-				add_Vertex_Word(WordTree, wordVertex, tweet);
+				++adj->count;
 				++tweetcount;
+				++wordVertex->word->count;
 			}
 			printf("done!\n");
 			fclose(fp);
-			printf("Total users : %d\n",usercount);
+			printf("\nTotal users : %d\n",usercount);
 			printf("Total friendship records : %d\n", friendcount);
-			printf("Total tweets : %d\n", tweetcount);
+			printf("Total tweets : %d\n\n", tweetcount);
 			break;
 		case 1:
+			printf("\nStatistics :\n");
+			printf("Average number of friends : %.2lf\n", friendcount/(double)usercount);
+			printf("Minimum friends : %d\n");
 			break;
 		case 2:
+			for (int i = 0; i < 5; ++i)
+				mostTweeted[i] = NULL;
+			FindMostTweet(WordTree, mostTweeted, WordTree->root);
+			printf("\nTop 5 most tweeted words :\n");
+			for (int i = 0; mostTweeted[i] && i < 5; ++i)
+				printf("%d. %s %d\n", i + 1, mostTweeted[i]->word->word,mostTweeted[i]->word->count);
+			printf("\n");
 			break;
 		case 3:
+			for (int i = 0; i < 5; ++i)
+				mostUsers[i] = NULL;
+			FindMostUser(UserTree, mostUsers, UserTree->root);
+			printf("\nTop 5 most tweeted users :\n");
+			for (int i = 0; mostUsers[i] && i < 5; ++i)
+				printf("%d. %s %d\n", i + 1, mostUsers[i]->user->screenName, mostUsers[i]->user->tweets);
+			printf("\n");
 			break;
 		case 4:
+			printf("\nType a word : ");
+			scanf("%s", tweet);
+			printf("\n");
+			VertexWord = BSTsearchWord(WordTree, tweet);
+			if (VertexWord == NULL) {
+				printf("There is no one that tweets that word\n\n");
+				break;
+			}
+			for (Adj_Word * adj = VertexWord->first; adj; adj = adj->next) {
+				printf("%s %d\n", BSTsearchID(UserTree, adj->ID)->user->screenName,adj->count);
+			}
+			printf("\n");
 			break;
 		case 5:
 			break;
@@ -271,8 +397,6 @@ int main() {
 		case 9:
 			break;
 		}
-		//ready step
-		
 
 	}
 	return 0;
