@@ -38,5 +38,11 @@
     <Text Include="word2.txt">
       <Filter>리소스 파일</Filter>
     </Text>
+    <Text Include="output.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
+    <Text Include="output1.txt">
+      <Filter>리소스 파일</Filter>
+    </Text>
   </ItemGroup>
 </Project>

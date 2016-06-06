@@ -147,6 +147,8 @@
   <ItemGroup>
     <Text Include="friend.txt" />
     <Text Include="friend2.txt" />
+    <Text Include="output.txt" />
+    <Text Include="output1.txt" />
     <Text Include="user.txt" />
     <Text Include="user2.txt" />
     <Text Include="word.txt" />

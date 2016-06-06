@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define BLACK 0
+#define RED 1
+
 typedef struct User {
 	char ID[20], signUpDate[40], screenName[20];
 	int tweets;
@@ -18,6 +21,7 @@ typedef struct Vertex_User {
 	struct Vertex_User * right;
 	struct Vertex_User * parent;
 	struct User * user;
+	int color;
 } Vertex_User;
 
 typedef struct BST_User {
@@ -41,6 +45,7 @@ typedef struct Vertex_Word {
 	struct Vertex_Word * right;
 	struct Vertex_Word * parent;
 	struct Word * word;
+	int color;
 } Vertex_Word;
 
 typedef struct BST_Word {
@@ -52,6 +57,7 @@ void init_Vertex_User(Vertex_User * self) {
 	self->left = NULL;
 	self->right = NULL;
 	self->parent = NULL;
+	self->color = BLACK;
 }
 
 void init_Adj_User(Adj_User * adj) {
@@ -59,6 +65,157 @@ void init_Adj_User(Adj_User * adj) {
 	strcpy(adj->ID, "");
 	adj->next = NULL;
 }
+
+void LRotate_User(BST_User * tree, Vertex_User * x) {
+	Vertex_User * y;
+	y = x->right;
+	x->right = y->left;
+	if (y->left != NULL)
+		y->left->parent = x;
+	y->parent = x->parent;
+	if (x->parent == NULL)
+		tree->root = y;
+	else if (x == x->parent->left)
+		x->parent->left = y;
+	else
+		x->parent->right = y;
+	y->left = x;
+	x->parent = y;
+}
+
+void RRotate_User(BST_User * tree, Vertex_User * x) {
+	Vertex_User * y;
+	y = x->left;
+	x->left = y->right;
+	if (y->right != NULL)
+		y->right->parent = x;
+	y->parent = x->parent;
+	if (x->parent == NULL)
+		tree->root = y;
+	else if (x == x->parent->left)
+		x->parent->left = y;
+	else
+		x->parent->right = y;
+	y->right = x;
+	x->parent = y;
+}
+
+void LRotate_Word(BST_Word * tree, Vertex_Word * x) {
+	Vertex_Word * y;
+	y = x->right;
+	x->right = y->left;
+	if (y->left != NULL)
+		y->left->parent = x;
+	y->parent = x->parent;
+	if (x->parent == NULL)
+		tree->root = y;
+	else if (x == x->parent->left)
+		x->parent->left = y;
+	else
+		x->parent->right = y;
+	y->left = x;
+	x->parent = y;
+}
+
+void RRotate_Word(BST_Word * tree, Vertex_Word * x) {
+	Vertex_Word * y;
+	y = x->left;
+	x->left = y->right;
+	if (y->right != NULL)
+		y->right->parent = x;
+	y->parent = x->parent;
+	if (x->parent == NULL)
+		tree->root = y;
+	else if (x == x->parent->left)
+		x->parent->left = y;
+	else
+		x->parent->right = y;
+	y->right = x;
+	x->parent = y;
+}
+
+void RBinsertFixup_User(BST_User * tree, Vertex_User * a) {
+	Vertex_User *b;
+	while (a->parent != NULL && a->parent->color == RED) {
+		if (a->parent == a->parent->parent->left) {
+			b = a->parent->parent->right;
+			if (b != NULL && b->color == RED) {
+				a->parent->color = BLACK;
+				b->color = BLACK;
+				a->parent->parent->color = RED;
+				a = a->parent->parent;
+				continue;
+			}
+			else if (a == a->parent->right) {
+				a = a->parent;
+				LRotate_User(tree, a);
+			}
+			a->parent->color = BLACK;
+			a->parent->parent->color = RED;
+			RRotate_User(tree, a->parent->parent);
+		}
+		else {
+			b = a->parent->parent->left;
+			if (b != NULL && b->color == RED) {
+				a->parent->color = BLACK;
+				b->color = BLACK;
+				a->parent->parent->color = RED;
+				a = a->parent->parent;
+				continue;
+			}
+			else if (a == a->parent->left) {
+				a = a->parent;
+				RRotate_User(tree, a);
+			}
+			a->parent->color = BLACK;
+			a->parent->parent->color = RED;
+			LRotate_User(tree, a->parent->parent);
+		}
+	}
+	tree->root->color = BLACK;
+}
+
+void RBinsertFixup_Word(BST_Word * tree, Vertex_Word * a) {
+	Vertex_Word *b;
+	while (a->parent != NULL && a->parent->color == RED) {
+		if (a->parent == a->parent->parent->left) {
+			b = a->parent->parent->right;
+			if (b != NULL && b->color == RED) {
+				a->parent->color = BLACK;
+				b->color = BLACK;
+				a->parent->parent->color = RED;
+				a = a->parent->parent;
+				continue;
+			}
+			else if (a == a->parent->right) {
+				a = a->parent;
+				LRotate_Word(tree, a);
+			}
+			a->parent->color = BLACK;
+			a->parent->parent->color = RED;
+			RRotate_Word(tree, a->parent->parent);
+		}
+		else {
+			b = a->parent->parent->left;
+			if (b != NULL && b->color == RED) {
+				a->parent->color = BLACK;
+				b->color = BLACK;
+				a->parent->parent->color = RED;
+				a = a->parent->parent;
+				continue;
+			}
+			else if (a == a->parent->left) {
+				a = a->parent;
+				RRotate_Word(tree, a);
+			}
+			a->parent->color = BLACK;
+			a->parent->parent->color = RED;
+			LRotate_Word(tree, a->parent->parent);
+		}
+	}
+	tree->root->color = BLACK;
+}
+
 
 void add_Vertex_User(BST_User * tree, Vertex_User * b, char * ID) {
 	User * user = malloc(sizeof(User));
@@ -76,17 +233,19 @@ void add_Vertex_User(BST_User * tree, Vertex_User * b, char * ID) {
 		while (a != NULL)
 		{
 			tmp = a;
-			if (cmpID(a->user->ID, b->user->ID) < 0)
+			if (cmpID(a->user->ID, b->user->ID) > 0)
 				a = a->left;
 			else
 				a = a->right;
 		}
 		b->parent = tmp;
-		if (cmpID(b->user->ID, tmp->user->ID) < 0)
+		if (cmpID(b->user->ID, tmp->user->ID) > 0)
 			tmp->right = b;
 		else
 			tmp->left = b;
 	}
+	b->color = RED;
+	RBinsertFixup_User(tree, b);
 }
 
 int cmpID(char * a, char * b) {
@@ -104,9 +263,9 @@ Vertex_User * BSTsearchID(BST_User * tree, char* ID) {
 	Vertex_User * a = tree->root;
 	while (a != NULL) {
 		if (cmpID(a->user->ID, ID) > 0)
-			a = a->right;
-		else if (cmpID(a->user->ID, ID) < 0)
 			a = a->left;
+		else if (cmpID(a->user->ID, ID) < 0)
+			a = a->right;
 		else
 			break;
 	}
@@ -118,6 +277,7 @@ void init_Vertex_Word(Vertex_Word * self) {
 	self->left = NULL;
 	self->right = NULL;
 	self->parent = NULL;
+	self->color = BLACK;
 }
 
 void init_Adj_Word(Adj_Word * adj) {
@@ -138,33 +298,35 @@ void add_Vertex_Word(BST_Word * tree, Vertex_Word * b) {
 		while (a != NULL)
 		{
 			tmp = a;
-			if (strcmp(a->word->word, b->word->word) < 0)
+			if (strcmp(a->word->word, b->word->word) > 0)
 				a = a->left;
 			else
 				a = a->right;
 		}
 		b->parent = tmp;
-		if (strcmp(b->word->word, tmp->word->word) < 0)
+		if (strcmp(b->word->word, tmp->word->word) > 0)
 			tmp->right = b;
 		else
 			tmp->left = b;
 	}
+	b->color = RED;
+	RBinsertFixup_Word(tree, b);
 }
 
 Vertex_Word * BSTsearchWord(BST_Word* tree, char* word) {
 	Vertex_Word * a = tree->root;
 	while (a != NULL) {
 		if (strcmp(a->word->word, word) > 0)
-			a = a->right;
-		else if (strcmp(a->word->word, word) < 0)
 			a = a->left;
+		else if (strcmp(a->word->word, word) < 0)
+			a = a->right;
 		else
 			break;
 	}
 	return a;
 }
 
-void DeleteVertex_User(BST_User * tree, Vertex_User * vertex) {
+void DelVertex_User(BST_User * tree, Vertex_User * vertex) {
 	if (vertex->left == NULL && vertex->right == NULL) {
 		if (vertex->parent->left == vertex)
 			vertex->parent->left = NULL;
@@ -184,7 +346,18 @@ void DeleteVertex_User(BST_User * tree, Vertex_User * vertex) {
 			vertex->parent->right = vertex->left;
 	}
 	else {
-
+		Vertex_User * vertex2 = vertex->right;
+		while (vertex2->left != NULL) {
+			vertex2 = vertex2->left;
+		}
+		vertex2->parent->left = NULL;
+		vertex2->parent = vertex->parent;
+		vertex2->left = vertex->left;
+		if (vertex2->right != NULL) {
+			vertex2->right->parent = vertex2->parent;
+			vertex2->parent->left = vertex2->right;
+		}
+		vertex2->right = vertex->right;
 	}
 	Adj_User * tmp, * tmp2 = vertex->first;
 	for (tmp = tmp2; tmp; tmp = tmp2) {
@@ -261,7 +434,7 @@ int main() {
 		case 0:
 			usercount = friendcount = tweetcount = 0;
 			printf("fetching data from 'user.txt'...");
-			fp = fopen("user.txt", "r");
+			fp = fopen("output.txt", "r");
 			char ID[10], signUpDate[40], screenName[20], fID[10], dummy[10], tweet[500];
 			while (fscanf(fp,"%s", ID) != -1) {
 				fgets(dummy, sizeof(dummy),fp);
@@ -300,7 +473,7 @@ int main() {
 			printf("done!\n");
 
 			printf("fetching data from 'word.txt'...");
-			fp = fopen("word.txt", "r");
+			fp = fopen("output1.txt", "r");
 			while (fscanf(fp,"%s", ID) != -1) {
 				int isSame = 0;
 				fgets(dummy, sizeof(dummy),fp);
