@@ -328,7 +328,7 @@ Vertex_Word * RBTsearchWord(RBT_Word* tree, char* word) {
 	return a;
 }
 
-void TransPlant(RBT_User * tree, Vertex_User * vertex, Vertex_User * vertex2) {
+void TransPlant_User(RBT_User * tree, Vertex_User * vertex, Vertex_User * vertex2) {
 	if (vertex->parent == NULL)
 		tree->root = vertex2;
 	else if (vertex == vertex->parent->left)
@@ -339,7 +339,7 @@ void TransPlant(RBT_User * tree, Vertex_User * vertex, Vertex_User * vertex2) {
 		vertex2->parent = vertex->parent;
 }
 
-void RB_Del_FixUp(RBT_User * tree, Vertex_User * vertex) {
+void RB_Del_FixUp_User(RBT_User * tree, Vertex_User * vertex) {
 	Vertex_User * vertex2;
 	if (vertex == NULL)
 		return;
@@ -402,11 +402,11 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex) {
 		return;
 	if (vertex->left == NULL) {
 		vertex3 = vertex->right;
-		TransPlant(tree, vertex, vertex->right);
+		TransPlant_User(tree, vertex, vertex->right);
 	}
 	else if (vertex->right == NULL) {
 		vertex3 = vertex->left;
-		TransPlant(tree, vertex, vertex->left);
+		TransPlant_User(tree, vertex, vertex->left);
 	}
 	else {
 		vertex2 = vertex->right;
@@ -418,59 +418,19 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex) {
 		if (vertex2->parent == vertex)
 			vertex3->parent = vertex2;
 		else {
-			TransPlant(tree, vertex2, vertex2->right);
+			TransPlant_User(tree, vertex2, vertex2->right);
 			vertex2->right = vertex->right;
 			vertex2->right->parent = vertex2;
 		}
-		TransPlant(tree, vertex, vertex2);
+		TransPlant_User(tree, vertex, vertex2);
 		vertex2->left = vertex->left;
 		vertex2->left->parent = vertex2;
 		vertex2->color = vertex->color;
 	}
+	free(vertex->user);
 	free(vertex);
 	if (origin_color == BLACK)
-		RB_Del_FixUp(tree, vertex3);
-}
-
-void DelVertex_User(RBT_User * tree, Vertex_User * vertex) {
-	if (vertex->left == NULL && vertex->right == NULL) {
-		if (vertex->parent->left == vertex)
-			vertex->parent->left = NULL;
-		else
-			vertex->parent->right = NULL;
-	}
-	else if (vertex->left == NULL) {
-		if (vertex->parent->left == vertex)
-			vertex->parent->left = vertex->right;
-		else
-			vertex->parent->right = vertex->right;
-	}
-	else if (vertex->right == NULL) {
-		if (vertex->parent->left == vertex)
-			vertex->parent->left = vertex->left;
-		else
-			vertex->parent->right = vertex->left;
-	}
-	else {
-		Vertex_User * vertex2 = vertex->right;
-		while (vertex2->left != NULL) {
-			vertex2 = vertex2->left;
-		}
-		vertex2->parent->left = NULL;
-		vertex2->parent = vertex->parent;
-		vertex2->left = vertex->left;
-		if (vertex2->right != NULL) {
-			vertex2->right->parent = vertex2->parent;
-			vertex2->parent->left = vertex2->right;
-		}
-		vertex2->right = vertex->right;
-	}
-	Adj_User * tmp, * tmp2 = vertex->first;
-	for (tmp = tmp2; tmp; tmp = tmp2) {
-		tmp2 = tmp2->next;
-		free(tmp);
-	}
-	free(vertex);
+		RB_Del_FixUp_User(tree, vertex3);
 }
 
 void FindMostTweet(RBT_Word * tree, Vertex_Word * vertices[], Vertex_Word * vertex) {
@@ -495,6 +455,110 @@ void FindMostTweet(RBT_Word * tree, Vertex_Word * vertices[], Vertex_Word * vert
 		FindMostTweet(tree, vertices, vertex->left);
 		FindMostTweet(tree, vertices, vertex->right);
 	}
+}
+
+void TransPlant_Word(RBT_Word * tree, Vertex_Word * vertex, Vertex_Word * vertex2) {
+	if (vertex->parent == NULL)
+		tree->root = vertex2;
+	else if (vertex == vertex->parent->left)
+		vertex->parent->left = vertex2;
+	else
+		vertex->parent->right = vertex2;
+	if (vertex2 != NULL)
+		vertex2->parent = vertex->parent;
+}
+
+void RB_Del_FixUp_Word(RBT_Word * tree, Vertex_Word * vertex) {
+	Vertex_Word * vertex2;
+	if (vertex == NULL)
+		return;
+	while (vertex != tree->root && vertex->color == BLACK) {
+		if (vertex == vertex->parent->left) {
+			vertex2 = vertex->parent->right;
+			if (vertex2->color == RED) {
+				vertex2->color = BLACK;
+				vertex->parent->color = RED;
+				LRotate_Word(tree, vertex->parent);
+				vertex2 = vertex->parent->right;
+			}
+			if (vertex2->left->color == BLACK && vertex2->right->color == BLACK) {
+				vertex2->color = RED;
+				vertex = vertex->parent;
+			}
+			else if (vertex2->right->color == BLACK) {
+				vertex2->left->color = BLACK;
+				vertex2->color = RED;
+				RRotate_Word(tree, vertex2);
+				vertex2 = vertex->parent->right;
+			}
+			vertex2->color = vertex->parent->color;
+			vertex->parent->color = BLACK;
+			vertex2->right->color = BLACK;
+			LRotate_Word(tree, vertex->parent);
+			vertex = tree->root;
+		}
+		else {
+			vertex2 = vertex->parent->left;
+			if (vertex2->color == RED) {
+				vertex2->color = BLACK;
+				vertex->parent->color = RED;
+				RRotate_Word(tree, vertex->parent);
+				vertex2 = vertex->parent->left;
+			}
+			if (vertex2->right->color == BLACK && vertex2->left->color == BLACK) {
+				vertex2->color = RED;
+				vertex = vertex->parent;
+			}
+			else if (vertex2->left->color == BLACK) {
+				vertex2->right->color = BLACK;
+				vertex2->color = RED;
+				LRotate_Word(tree, vertex2);
+				vertex2 = vertex->parent->left;
+			}
+			vertex2->color = vertex->parent->color;
+			vertex->parent->color = BLACK;
+			vertex2->left->color = BLACK;
+			RRotate_Word(tree, vertex->parent);
+			vertex = tree->root;
+		}
+	}
+}
+
+void RBT_Delete_Word(RBT_Word * tree, Vertex_Word * vertex) {
+	Vertex_Word * vertex2 = vertex, *vertex3;
+	int origin_color = vertex->color;
+	if (vertex == NULL)
+		return;
+	if (vertex->left == NULL) {
+		vertex3 = vertex->right;
+		TransPlant_Word(tree, vertex, vertex->right);
+	}
+	else if (vertex->right == NULL) {
+		vertex3 = vertex->left;
+		TransPlant_Word(tree, vertex, vertex->left);
+	}
+	else {
+		vertex2 = vertex->right;
+		while (vertex2->left != NULL) {
+			vertex2 = vertex2->left;
+		}
+		origin_color = vertex2->color;
+		vertex3 = vertex2->right;
+		if (vertex2->parent == vertex)
+			vertex3->parent = vertex2;
+		else {
+			TransPlant_Word(tree, vertex2, vertex2->right);
+			vertex2->right = vertex->right;
+			vertex2->right->parent = vertex2;
+		}
+		TransPlant_Word(tree, vertex, vertex2);
+		vertex2->left = vertex->left;
+		vertex2->left->parent = vertex2;
+		vertex2->color = vertex->color;
+	}
+	free(vertex);
+	if (origin_color == BLACK)
+		RB_Del_FixUp_Word(tree, vertex3);
 }
 
 void FindMostOrLeastUser(RBT_User * tree, Vertex_User* vertices[], Vertex_User * vertex, int sz, int option) {
@@ -549,6 +613,29 @@ void FindMinOrMaxFriend(RBT_User * tree, int count, Vertex_User * vertex, Vertex
 	}
 }
 
+void deleteFriendship(Vertex_User * delVertex, Vertex_User * curVertex, int * friendcount) {
+	Adj_User * adj, * prev = NULL;
+	if (curVertex != NULL) {
+		for (adj = curVertex->first; adj; prev = adj, adj = adj->next) {
+			if (strcmp(delVertex->user->ID, adj->ID) == 0) {
+				--curVertex->friend;
+				--(*friendcount);
+				if (prev == NULL) {
+					curVertex->first = adj->next;
+					free(adj);
+					break;
+				}
+				else {
+					prev->next = adj->next;
+					free(adj);
+					break;
+				}
+			}
+		}
+		deleteFriendship(delVertex, curVertex->left, friendcount);
+		deleteFriendship(delVertex, curVertex->right, friendcount);
+	}
+}
 
 int main() {
 	RBT_User * UserTree = malloc(sizeof(RBT_User));
@@ -591,7 +678,7 @@ int main() {
 			printf("done!\n");
 
 			printf("fetching data from 'friend.txt'...");
-			fp = fopen("friend.txt", "r");
+			fp = fopen("friend2.txt", "r");
 			//friend.txt
 			while (fscanf(fp,"%s %s", ID, fID) != -1) {
 				Vertex_User * self, *friend;
@@ -716,20 +803,40 @@ int main() {
 			break;
 		case 5:
 			for (int i = 0; i < 5; ++i) {
-				Vertex_User * user = RBTsearchID(UserTree,vertices[i]->user->ID);
-				if (user->first == NULL) {
-					printf("There is no friend from %s\n\n", user->user->screenName);
-					continue;
-				}
-				printf("Friends of %s :\n", user->user->screenName);
-				for (Adj_User * adj = user->first; adj; adj = adj->next) {
-					printf("%s\n", RBTsearchID(UserTree, adj->ID)->user->screenName);
+				if (vertices[i] != NULL) {
+					Vertex_User * user = RBTsearchID(UserTree, vertices[i]->user->ID);
+					if (user->first == NULL) {
+						printf("There is no friend from %s\n\n", user->user->screenName);
+						continue;
+					}
+					printf("Friends of %s :\n", user->user->screenName);
+					for (Adj_User * adj = user->first; adj; adj = adj->next) {
+						printf("%s\n", RBTsearchID(UserTree, adj->ID)->user->screenName);
+					}
 				}
 			}
 			break;
-		case 6: 
+		case 6: {
+			printf("\nType a word :");
+			scanf("%s", tweet);
+			VertexWord = RBTsearchWord(WordTree, tweet);
+
+			printf("These users are deleted :\n");
+			Adj_Word * adj, *tmp = VertexWord->first;
+			Vertex_User * user;
+			for (adj = tmp; adj; adj = tmp) {
+				tmp = tmp->next;
+				printf("%s\n", adj->ID);
+				--RBTsearchID(UserTree, adj->ID)->user->tweets;
+				free(adj);
+
+				--VertexWord->word->count;
+			}
+			VertexWord->first = NULL;
+		}
 			break;
 		case 7: {
+			Vertex_User * user;
 			printf("\nType a word :");
 			scanf("%s", tweet);
 			VertexWord = RBTsearchWord(WordTree, tweet);
@@ -737,10 +844,16 @@ int main() {
 			printf("These users are deleted :\n");
 			Adj_Word * adj, *tmp = VertexWord->first;
 			for (adj = tmp; adj; adj = tmp) {
+				user = RBTsearchID(UserTree, adj->ID);
 				tmp = tmp->next;
 				printf("%s\n", adj->ID);
-				RBT_Delete_User(UserTree, RBTsearchID(UserTree, adj->ID));
+				tweetcount -= user->user->tweets;
+				deleteFriendship(user, UserTree->root, &friendcount);
+				RBT_Delete_User(UserTree, user);
 				free(adj);
+				--usercount;
+
+				--VertexWord->word->count;
 			}
 			VertexWord->first = NULL;
 		}
