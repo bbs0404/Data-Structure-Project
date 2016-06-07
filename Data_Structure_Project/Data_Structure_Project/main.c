@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
 #define BLACK 0
 #define RED 1
 
@@ -395,7 +394,7 @@ void RB_Del_FixUp_User(RBT_User * tree, Vertex_User * vertex) {
 	}
 }
 
-void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex) {
+void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex, int * friendcount) {
 	Vertex_User * vertex2 = vertex, *vertex3;
 	int origin_color = vertex->color;
 	if (vertex == NULL)
@@ -426,6 +425,14 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex) {
 		vertex2->left = vertex->left;
 		vertex2->left->parent = vertex2;
 		vertex2->color = vertex->color;
+	}
+	Adj_User *tmp = vertex->first, *adj;
+	for (adj = tmp; adj; adj = tmp) {
+		if (tmp != NULL) {
+			tmp = tmp->next;
+			free(adj);
+			--(*friendcount);
+		}
 	}
 	free(vertex->user);
 	free(vertex);
@@ -642,13 +649,13 @@ int main() {
 	RBT_Word * WordTree = malloc(sizeof(RBT_Word));
 	Vertex_Word * mostTweeted[5] = { 0 };
 	Vertex_User * vertices[5] = { 0 }, * vertex[1];
+	int isRead = 0, menu, usercount, friendcount, tweetcount;
 	UserTree->root = WordTree->root = NULL;
 	while (1) {
 		printf("0. Read data files\n1. display statistics\n2. Top 5 most tweeted words\n");
 		printf("3. Top 5 most tweeted users\n4. Find users who tweeted a word\n5. Find all people who are friends of the above users\n");
 		printf("6. Delete all mentions of a word\n7. Delete all users who mentioned a word\n8. Find strongly connected components\n");
 		printf("9. Find shortest path from a given user\n\99. Quit\nSelect Menu: ");
-		int menu, usercount, friendcount, tweetcount;
 		Vertex_Word * VertexWord;
 		char str[30];
 		FILE * fp;
@@ -656,6 +663,10 @@ int main() {
 		gets_s(str, sizeof(str));
 		if (menu == 99)
 			break;
+		else if (menu != 0 && !isRead) {
+			printf("\nPlease read data files first.\n\n");
+			continue;
+		}
 		switch (menu) {
 		case 0:
 			usercount = friendcount = tweetcount = 0;
@@ -748,6 +759,7 @@ int main() {
 			printf("\nTotal users : %d\n",usercount);
 			printf("Total friendship records : %d\n", friendcount);
 			printf("Total tweets : %d\n\n", tweetcount);
+			isRead = 1;
 			break;
 		case 1: {
 			printf("\nStatistics :\n");
@@ -847,11 +859,11 @@ int main() {
 				user = RBTsearchID(UserTree, adj->ID);
 				tmp = tmp->next;
 				printf("%s\n", adj->ID);
-				tweetcount -= user->user->tweets;
-				deleteFriendship(user, UserTree->root, &friendcount);
-				RBT_Delete_User(UserTree, user);
+				tweetcount -= user->user->tweets; //유저가 한 트윗수만큼 전체 트윗수 감소
+				deleteFriendship(user, UserTree->root, &friendcount); //유저를 친구로 두고 있는것을 모두 삭제
+				RBT_Delete_User(UserTree, user,&friendcount); //유저삭제
 				free(adj);
-				--usercount;
+				--usercount; //전체 유저수 감소
 
 				--VertexWord->word->count;
 			}
