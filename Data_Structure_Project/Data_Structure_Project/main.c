@@ -328,6 +328,104 @@ Vertex_Word * RBTsearchWord(RBT_Word* tree, char* word) {
 	return a;
 }
 
+void TransPlant(RBT_User * tree, Vertex_User * vertex, Vertex_User * vertex2) {
+	if (vertex->parent = NULL)
+		tree->root = vertex2;
+	else if (vertex == vertex->parent->left)
+		vertex->parent->left = vertex2;
+	else
+		vertex->parent->right = vertex2;
+	vertex2->parent = vertex->parent;
+}
+
+void RB_Del_FixUp(RBT_User * tree, Vertex_User * vertex) {
+	Vertex_User * vertex2;
+	while (vertex != tree->root && vertex->color == BLACK) {
+		if (vertex == vertex->parent->left) {
+			vertex2 = vertex->parent->right;
+			if (vertex2->color == RED) {
+				vertex2->color = BLACK;
+				vertex->parent->color = RED;
+				LRotate_User(tree, vertex->parent);
+				vertex2 = vertex->parent->right;
+			}
+			if (vertex2->left->color == BLACK && vertex2->right->color == BLACK) {
+				vertex2->color = RED;
+				vertex = vertex->parent;
+			}
+			else if (vertex2->right->color == BLACK) {
+				vertex2->left->color = BLACK;
+				vertex2->color = RED;
+				RRotate_User(tree, vertex2);
+				vertex2 = vertex->parent->right;
+			}
+			vertex2->color = vertex->parent->color;
+			vertex->parent->color = BLACK;
+			vertex2->right->color = BLACK;
+			LRotate_User(tree, vertex->parent);
+			vertex = tree->root;
+		}
+		else {
+			vertex2 = vertex->parent->left;
+			if (vertex2->color == RED) {
+				vertex2->color = BLACK;
+				vertex->parent->color = RED;
+				RRotate_User(tree, vertex->parent);
+				vertex2 = vertex->parent->left;
+			}
+			if (vertex2->right->color == BLACK && vertex2->left->color == BLACK) {
+				vertex2->color = RED;
+				vertex = vertex->parent;
+			}
+			else if (vertex2->left->color == BLACK) {
+				vertex2->right->color = BLACK;
+				vertex2->color = RED;
+				LRotate_User(tree, vertex2);
+				vertex2 = vertex->parent->left;
+			}
+			vertex2->color = vertex->parent->color;
+			vertex->parent->color = BLACK;
+			vertex2->left->color = BLACK;
+			RRotate_User(tree, vertex->parent);
+			vertex = tree->root;
+		}
+	}
+}
+
+void RBT_Delete(RBT_User * tree, Vertex_User * vertex) {
+	Vertex_User * vertex2 = vertex, *vertex3;
+	int origin_color = vertex->color;
+	if (vertex->left == NULL) {
+		vertex3 = vertex->right;
+		TransPlant(tree, vertex, vertex->right);
+	}
+	else if (vertex->right == NULL) {
+		vertex3 = vertex->left;
+		TransPlant(tree, vertex, vertex->left);
+	}
+	else {
+		vertex2 = vertex->right;
+		while (vertex2->left != NULL) {
+			vertex2 = vertex2->left;
+		}
+		vertex3 = vertex2->right;
+		if (vertex2->parent == vertex)
+			vertex3->parent = vertex2;
+		else {
+			TransPlant(tree, vertex2, vertex2->right);
+			vertex2->right = vertex->right;
+			vertex2->right->parent = vertex2;
+		}
+		TransPlant(tree, vertex, vertex2);
+		vertex2->left = vertex->left;
+		vertex2->left->parent = vertex;
+		vertex2->color = vertex->color;
+	}
+	free(vertex);
+	if (origin_color == BLACK)
+		RB_Del_FixUp(tree, vertex3);
+}
+
 void DelVertex_User(RBT_User * tree, Vertex_User * vertex) {
 	if (vertex->left == NULL && vertex->right == NULL) {
 		if (vertex->parent->left == vertex)
@@ -601,20 +699,34 @@ int main() {
 			scanf("%s", tweet);
 			printf("\n");
 			VertexWord = RBTsearchWord(WordTree, tweet);
-			if (VertexWord == NULL) {
+			if (VertexWord == NULL || VertexWord->first == NULL) {
 				printf("There is no one that tweets that word\n\n");
 				break;
 			}
 			for (Adj_Word * adj = VertexWord->first; adj; adj = adj->next) {
-				printf("%s %d\n", RBTsearchID(UserTree, adj->ID)->user->screenName,adj->count);
+				printf("%s %d\n", RBTsearchID(UserTree, adj->ID)->user->ID,adj->count);
 			}
 			printf("\n");
 			break;
 		case 5:
 			break;
-		case 6:
+		case 6: 
 			break;
-		case 7:
+		case 7: {
+			printf("\nType a word :");
+			scanf("%s", tweet);
+			VertexWord = RBTsearchWord(WordTree, tweet);
+
+			printf("These users are deleted :\n");
+			Adj_Word * adj, *tmp = VertexWord->first;
+			for (adj = tmp; adj; adj = tmp) {
+				tmp = tmp->next;
+				printf("%s\n", adj->ID);
+				DelVertex_User(UserTree, RBTsearchID(UserTree, adj->ID));
+				free(adj);
+			}
+			VertexWord->first = NULL;
+		}
 			break;
 		case 8:
 			break;
