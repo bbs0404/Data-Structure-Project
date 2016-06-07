@@ -329,17 +329,20 @@ Vertex_Word * RBTsearchWord(RBT_Word* tree, char* word) {
 }
 
 void TransPlant(RBT_User * tree, Vertex_User * vertex, Vertex_User * vertex2) {
-	if (vertex->parent = NULL)
+	if (vertex->parent == NULL)
 		tree->root = vertex2;
 	else if (vertex == vertex->parent->left)
 		vertex->parent->left = vertex2;
 	else
 		vertex->parent->right = vertex2;
-	vertex2->parent = vertex->parent;
+	if (vertex2 != NULL)
+		vertex2->parent = vertex->parent;
 }
 
 void RB_Del_FixUp(RBT_User * tree, Vertex_User * vertex) {
 	Vertex_User * vertex2;
+	if (vertex == NULL)
+		return;
 	while (vertex != tree->root && vertex->color == BLACK) {
 		if (vertex == vertex->parent->left) {
 			vertex2 = vertex->parent->right;
@@ -392,9 +395,11 @@ void RB_Del_FixUp(RBT_User * tree, Vertex_User * vertex) {
 	}
 }
 
-void RBT_Delete(RBT_User * tree, Vertex_User * vertex) {
+void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex) {
 	Vertex_User * vertex2 = vertex, *vertex3;
 	int origin_color = vertex->color;
+	if (vertex == NULL)
+		return;
 	if (vertex->left == NULL) {
 		vertex3 = vertex->right;
 		TransPlant(tree, vertex, vertex->right);
@@ -408,6 +413,7 @@ void RBT_Delete(RBT_User * tree, Vertex_User * vertex) {
 		while (vertex2->left != NULL) {
 			vertex2 = vertex2->left;
 		}
+		origin_color = vertex2->color;
 		vertex3 = vertex2->right;
 		if (vertex2->parent == vertex)
 			vertex3->parent = vertex2;
@@ -548,7 +554,7 @@ int main() {
 	RBT_User * UserTree = malloc(sizeof(RBT_User));
 	RBT_Word * WordTree = malloc(sizeof(RBT_Word));
 	Vertex_Word * mostTweeted[5] = { 0 };
-	Vertex_User * vertices[5] = { 0 };
+	Vertex_User * vertices[5] = { 0 }, * vertex[1];
 	UserTree->root = WordTree->root = NULL;
 	while (1) {
 		printf("0. Read data files\n1. display statistics\n2. Top 5 most tweeted words\n");
@@ -567,7 +573,7 @@ int main() {
 		case 0:
 			usercount = friendcount = tweetcount = 0;
 			printf("fetching data from 'user.txt'...");
-			fp = fopen("output.txt", "r");
+			fp = fopen("user2.txt", "r");
 			char ID[10], signUpDate[40], screenName[20], fID[10], dummy[10], tweet[500];
 			while (fscanf(fp,"%s", ID) != -1) {
 				fgets(dummy, sizeof(dummy),fp);
@@ -607,7 +613,7 @@ int main() {
 			printf("done!\n");
 
 			printf("fetching data from 'word.txt'...");
-			fp = fopen("output1.txt", "r");
+			fp = fopen("word2.txt", "r");
 			while (fscanf(fp,"%s", ID) != -1) {
 				int isSame = 0;
 				fgets(dummy, sizeof(dummy),fp);
@@ -659,21 +665,21 @@ int main() {
 		case 1: {
 			printf("\nStatistics :\n");
 			printf("Average number of friends : %.2lf\n", friendcount / (double)usercount);
-			for (int i = 0; i < 5; ++i)
-				vertices[i] = NULL;
-			FindMinOrMaxFriend(UserTree, usercount, UserTree->root, vertices, 0);
-			printf("Minimum friends : %s %d\n", vertices[0]->user->screenName, vertices[0]->friend);
-			FindMinOrMaxFriend(UserTree, -1, UserTree->root, vertices, 1);
-			printf("Maximum number of friends : %d\n\n", vertices[0]->friend);
+			for (int i = 0; i < 1; ++i)
+				vertex[i] = NULL;
+			FindMinOrMaxFriend(UserTree, usercount, UserTree->root, vertex, 0);
+			printf("Minimum friends : %s %d\n", vertex[0]->user->screenName, vertex[0]->friend);
+			FindMinOrMaxFriend(UserTree, -1, UserTree->root, vertex, 1);
+			printf("Maximum number of friends : %d\n\n", vertex[0]->friend);
 			printf("Average tweets per user : %.2lf\n", tweetcount / (double)usercount);
+			for (int i = 0; i < 1; ++i)
+				vertex[i] = NULL;
+			FindMostOrLeastUser(UserTree, vertex, UserTree->root, 1, 0);
+			printf("Minimum tweets per user : %d\n", vertex[0]->user->tweets);
 			for (int i = 0; i < 5; ++i)
-				vertices[i] = NULL;
-			FindMostOrLeastUser(UserTree, vertices, UserTree->root, 1, 0);
-			printf("Minimum tweets per user : %d\n", vertices[0]->user->tweets);
-			for (int i = 0; i < 5; ++i)
-				vertices[i] = NULL;
-			FindMostOrLeastUser(UserTree, vertices, UserTree->root, 1, 1);
-			printf("Maximum tweets per user : %d\n\n", vertices[0]->user->tweets);
+				vertex[i] = NULL;
+			FindMostOrLeastUser(UserTree, vertex, UserTree->root, 1, 1);
+			printf("Maximum tweets per user : %d\n\n", vertex[0]->user->tweets);
 			break;
 		}
 		case 2:
@@ -709,6 +715,17 @@ int main() {
 			printf("\n");
 			break;
 		case 5:
+			for (int i = 0; i < 5; ++i) {
+				Vertex_User * user = RBTsearchID(UserTree,vertices[i]->user->ID);
+				if (user->first == NULL) {
+					printf("There is no friend from %s\n\n", user->user->screenName);
+					continue;
+				}
+				printf("Friends of %s :\n", user->user->screenName);
+				for (Adj_User * adj = user->first; adj; adj = adj->next) {
+					printf("%s\n", RBTsearchID(UserTree, adj->ID)->user->screenName);
+				}
+			}
 			break;
 		case 6: 
 			break;
@@ -722,7 +739,7 @@ int main() {
 			for (adj = tmp; adj; adj = tmp) {
 				tmp = tmp->next;
 				printf("%s\n", adj->ID);
-				DelVertex_User(UserTree, RBTsearchID(UserTree, adj->ID));
+				RBT_Delete_User(UserTree, RBTsearchID(UserTree, adj->ID));
 				free(adj);
 			}
 			VertexWord->first = NULL;
