@@ -37,7 +37,7 @@ typedef struct Word {
 typedef struct Adj_Word {
 	char ID[20];
 	int count;
-	struct Adj * next;
+	struct Adj_Word * next;
 } Adj_Word;
 
 typedef struct Vertex_Word {
@@ -424,7 +424,7 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex) {
 		}
 		TransPlant(tree, vertex, vertex2);
 		vertex2->left = vertex->left;
-		vertex2->left->parent = vertex;
+		vertex2->left->parent = vertex2;
 		vertex2->color = vertex->color;
 	}
 	free(vertex);
@@ -575,6 +575,7 @@ int main() {
 			printf("fetching data from 'user.txt'...");
 			fp = fopen("user2.txt", "r");
 			char ID[10], signUpDate[40], screenName[20], fID[10], dummy[10], tweet[500];
+
 			while (fscanf(fp,"%s", ID) != -1) {
 				fgets(dummy, sizeof(dummy),fp);
 				fgets(signUpDate, sizeof(signUpDate),fp);
@@ -646,9 +647,8 @@ int main() {
 				if (!isSame) {
 					adj = malloc(sizeof(Adj_Word));
 					init_Adj_Word(adj);
-					tmp = wordVertex->first;
+					adj->next = wordVertex->first;
 					wordVertex->first = adj;
-					adj->next = tmp;
 					strcpy(wordVertex->first->ID, ID);
 				}
 				++userVertex->user->tweets;
