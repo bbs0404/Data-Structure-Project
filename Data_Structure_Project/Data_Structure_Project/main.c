@@ -4,6 +4,8 @@
 #define BLACK 0
 #define RED 1
 
+int usercount, friendcount, tweetcount;
+
 typedef struct User {
 	char ID[20], signUpDate[40], screenName[20];
 	int tweets;
@@ -14,8 +16,20 @@ typedef struct Adj_User {
 	struct Adj_User * next;
 } Adj_User;
 
+typedef struct Adj_Word {
+	char ID[20];
+	int count;
+	struct Adj_Word * next;
+} Adj_Word;
+
+typedef struct Adj_User_Wordlist {
+	char * word;
+	struct Adj_User_Wordlist * next;
+} Adj_User_Wordlist;
+
 typedef struct Vertex_User {
 	Adj_User * first; //friend
+	Adj_User_Wordlist * firstWord;
 	struct Vertex_User * left;
 	struct Vertex_User * right;
 	struct Vertex_User * parent;
@@ -23,6 +37,8 @@ typedef struct Vertex_User {
 	int color;
 	int friend;
 } Vertex_User;
+
+Vertex_User * foo;
 
 typedef struct RBT_User {
 	Vertex_User * root;
@@ -32,12 +48,6 @@ typedef struct Word {
 	char word[300];
 	int count;
 } Word;
-
-typedef struct Adj_Word {
-	char ID[20];
-	int count;
-	struct Adj_Word * next;
-} Adj_Word;
 
 typedef struct Vertex_Word {
 	Adj_Word * first; //who mentioned
@@ -54,6 +64,7 @@ typedef struct RBT_Word {
 
 void init_Vertex_User(Vertex_User * self) {
 	self->first = NULL;
+	self->firstWord = NULL;
 	self->left = NULL;
 	self->right = NULL;
 	self->parent = NULL;
@@ -68,8 +79,9 @@ void init_Adj_User(Adj_User * adj) {
 }
 
 void LRotate_User(RBT_User * tree, Vertex_User * x) {
-	Vertex_User * y;
-	y = x->right;
+	Vertex_User * y = x->right;
+	if (y == NULL)
+		return;
 	x->right = y->left;
 	if (y->left != NULL)
 		y->left->parent = x;
@@ -338,97 +350,111 @@ void TransPlant_User(RBT_User * tree, Vertex_User * vertex, Vertex_User * vertex
 		vertex2->parent = vertex->parent;
 }
 
-void RB_Del_FixUp_User(RBT_User * tree, Vertex_User * vertex) {
-	Vertex_User * vertex2;
-	if (vertex == NULL)
-		return;
-	while (vertex != tree->root && vertex->color == BLACK) {
-		if (vertex == vertex->parent->left) {
-			vertex2 = vertex->parent->right;
-			if (vertex2->color == RED) {
-				vertex2->color = BLACK;
-				vertex->parent->color = RED;
-				LRotate_User(tree, vertex->parent);
-				vertex2 = vertex->parent->right;
+void RB_Del_FixUp_User(RBT_User * tree, Vertex_User * x, Vertex_User * parent) {
+	Vertex_User * w;
+	while (x != tree->root && (x == NULL || x->color == BLACK)) {
+		if (x == parent->left) {
+			w = parent->right;
+			if (w != NULL && w->color == RED) {
+				w->color = BLACK;
+				parent->color = RED;
+				LRotate_User(tree, parent);
+				w = parent->right;
 			}
-			if (vertex2->left->color == BLACK && vertex2->right->color == BLACK) {
-				vertex2->color = RED;
-				vertex = vertex->parent;
+			if (w != NULL && w->left->color == BLACK && w->right->color == BLACK) {
+				w->color = RED;
+				x = parent;
+				parent = x->parent;
 			}
-			else if (vertex2->right->color == BLACK) {
-				vertex2->left->color = BLACK;
-				vertex2->color = RED;
-				RRotate_User(tree, vertex2);
-				vertex2 = vertex->parent->right;
+			else if (w != NULL && w->right->color == BLACK) {
+				w->left->color = BLACK;
+				w->color = RED;
+				RRotate_User(tree, w);
+				w = parent->right;
 			}
-			vertex2->color = vertex->parent->color;
-			vertex->parent->color = BLACK;
-			vertex2->right->color = BLACK;
-			LRotate_User(tree, vertex->parent);
-			vertex = tree->root;
+			if (w != NULL)
+				w->color = parent->color;
+			parent->color = BLACK;
+			if (w != NULL)
+				w->right->color = BLACK;
+			LRotate_User(tree, parent);
+			x = tree->root;
 		}
 		else {
-			vertex2 = vertex->parent->left;
-			if (vertex2->color == RED) {
-				vertex2->color = BLACK;
-				vertex->parent->color = RED;
-				RRotate_User(tree, vertex->parent);
-				vertex2 = vertex->parent->left;
+			w = parent->left;
+			if (w != NULL && w->color == RED) {
+				w->color = BLACK;
+				parent->color = RED;
+				RRotate_User(tree, parent);
+				w = parent->left;
 			}
-			if (vertex2->right->color == BLACK && vertex2->left->color == BLACK) {
-				vertex2->color = RED;
-				vertex = vertex->parent;
+			if ((w->right == NULL || w->right->color == BLACK) && (w->left == NULL || w->left->color == BLACK)) {
+				w->color = RED;
+				x = parent;
+				parent = x->parent;
 			}
-			else if (vertex2->left->color == BLACK) {
-				vertex2->right->color = BLACK;
-				vertex2->color = RED;
-				LRotate_User(tree, vertex2);
-				vertex2 = vertex->parent->left;
+			else {
+				if (w->left == NULL || w->left->color == BLACK) {
+
+					w->right->color = BLACK;
+					w->color = RED;
+					LRotate_User(tree, w);
+					w = parent->left;
+				}
+				if (w != NULL)
+					w->color = parent->color;
+				parent->color = BLACK;
+				if (w->left != NULL)
+					w->left->color = BLACK;
+				RRotate_User(tree, parent);
+				x = tree->root;
 			}
-			vertex2->color = vertex->parent->color;
-			vertex->parent->color = BLACK;
-			vertex2->left->color = BLACK;
-			RRotate_User(tree, vertex->parent);
-			vertex = tree->root;
 		}
 	}
+	x->color = BLACK;
 }
 
-void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex, int * friendcount) {
-	Vertex_User * vertex2 = vertex, *vertex3;
-	int origin_color = vertex->color;
-	if (vertex == NULL)
+void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Word * wordTree) {
+	Vertex_User * y = z, *x, *parent;
+	int origin_color = z->color;
+	if (z == NULL)
 		return;
-	if (vertex->left == NULL) {
-		vertex3 = vertex->right;
-		TransPlant_User(tree, vertex, vertex->right);
+	if (z->left == NULL) {
+		x = z->right;
+		parent = z;
+		TransPlant_User(tree, z, z->right);
 	}
-	else if (vertex->right == NULL) {
-		vertex3 = vertex->left;
-		TransPlant_User(tree, vertex, vertex->left);
+	else if (z->right == NULL) {
+		x = z->left;
+		parent = z;
+		TransPlant_User(tree, z, z->left);
 	}
 	else {
-		vertex2 = vertex->right;
-		while (vertex2->left != NULL) {
-			vertex2 = vertex2->left;
+		y = z->right;
+		while (y->left != NULL) {
+			y = y->left;
 		}
-		origin_color = vertex2->color;
-		vertex3 = vertex2->right;
-		if (vertex2->parent == vertex)
-			if (vertex3 != NULL)
-				vertex3->parent = vertex2;
+		origin_color = y->color;
+		x = y->right;
+		parent = y;
+		if (y->parent == z) {
+			if (x != NULL) {
+				x->parent = y;
+			}
+			parent = y;
+		}
 		else {
-			TransPlant_User(tree, vertex2, vertex2->right);
-			vertex2->right = vertex->right;
-			if (vertex2->right != NULL)
-				vertex2->right->parent = vertex2;
+			TransPlant_User(tree, y, y->right);
+			y->right = z->right;
+			y->right->parent = y;
 		}
-		TransPlant_User(tree, vertex, vertex2);
-		vertex2->left = vertex->left;
-		vertex2->left->parent = vertex2;
-		vertex2->color = vertex->color;
+		TransPlant_User(tree, z, y);
+		y->left = z->left;
+		y->left->parent = y;
+		y->color = z->color;
 	}
-	Adj_User *tmp = vertex->first, *adj;
+
+	Adj_User *tmp = z->first, *adj;
 	for (adj = tmp; adj; adj = tmp) {
 		if (tmp != NULL) {
 			tmp = tmp->next;
@@ -436,10 +462,39 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * vertex, int * friendcount) {
 			--(*friendcount);
 		}
 	}
-	free(vertex->user);
-	free(vertex);
+	Adj_User_Wordlist *list, *tmplist = z->firstWord, *prelist = NULL;
+	Adj_Word *adjW, *tmpW, *preW = NULL;
+	Vertex_Word * vertexW;
+	for (list = tmplist; list; list = tmplist) {
+		if (tmplist != NULL) {
+			tmplist = tmplist->next;
+			vertexW = RBTsearchWord(wordTree, list->word);
+			for (adjW = tmpW = vertexW->first; adjW; adjW = tmpW) {
+				if (tmpW != NULL) {
+					tmpW = tmpW->next;
+					if (strcmp(adjW->ID, z->user->ID) == 0) {
+						if (preW == NULL)
+							vertexW->first = adjW->next;
+						else 
+							preW->next = adjW->next;
+						vertexW->word->count -= adjW->count;
+						break;
+					}
+					preW = adjW;
+				}
+			}
+			if (prelist == NULL)
+				z->firstWord = list->next;
+			else
+				prelist->next = list->next;
+			free(list);
+			continue;
+		}
+		prelist = list;
+	}
+
 	if (origin_color == BLACK)
-		RB_Del_FixUp_User(tree, vertex3);
+		RB_Del_FixUp_User(tree, x, parent);
 }
 
 void FindMostTweet(RBT_Word * tree, Vertex_Word * vertices[], Vertex_Word * vertex) {
@@ -451,7 +506,7 @@ void FindMostTweet(RBT_Word * tree, Vertex_Word * vertices[], Vertex_Word * vert
 				break;
 			}
 			if (vertex->word->count > vertices[i]->word->count) {
-				for (int j = 5; j > i; --j) {
+				for (int j = 4; j > i; --j) {
 					vertices[j] = vertices[j - 1];
 				}
 				vertices[i] = vertex;
@@ -531,6 +586,7 @@ void RB_Del_FixUp_Word(RBT_Word * tree, Vertex_Word * vertex) {
 			vertex = tree->root;
 		}
 	}
+	vertex->color = BLACK;
 }
 
 void RBT_Delete_Word(RBT_Word * tree, RBT_User * usertree, Vertex_Word * vertex) {
@@ -580,7 +636,7 @@ void RBT_Delete_Word(RBT_Word * tree, RBT_User * usertree, Vertex_Word * vertex)
 }
 
 void FindMostOrLeastUser(RBT_User * tree, Vertex_User* vertices[], Vertex_User * vertex, int sz, int option) {
-	int i, isSame = 0;
+	int i;
 	if (vertex != NULL) {
 		if (option == 0) {
 			for (i = 0; vertices[i] && i < sz; ++i) {
@@ -604,7 +660,7 @@ void FindMostOrLeastUser(RBT_User * tree, Vertex_User* vertices[], Vertex_User *
 				}
 			}
 		}
-		if (i < sz && !isSame) {
+		if (i < sz) {
 			vertices[i] = vertex;
 		}
 		FindMostOrLeastUser(tree, vertices, vertex->left, sz, option);
@@ -660,9 +716,10 @@ int main() {
 	RBT_Word * WordTree = malloc(sizeof(RBT_Word));
 	Vertex_Word * mostTweeted[5] = { 0 };
 	Vertex_User * vertices[5] = { 0 }, * vertex[1];
-	int isRead = 0, isVerticesReady = 0, menu, usercount, friendcount, tweetcount;
+	int isRead = 0, isVerticesReady = 0, menu;
 	UserTree->root = WordTree->root = NULL;
 	while (1) {
+		//유저를 지울때 word에 있는 adj를 없애야 한다.
 		printf("0. Read data files\n1. display statistics\n2. Top 5 most tweeted words\n");
 		printf("3. Top 5 most tweeted users\n4. Find users who tweeted a word\n5. Find all people who are friends of the above users\n");
 		printf("6. Delete all mentions of a word\n7. Delete all users who mentioned a word\n8. Find strongly connected components\n");
@@ -691,6 +748,10 @@ int main() {
 				fscanf(fp, "%s", screenName);
 				Vertex_User * vertex = malloc(sizeof(Vertex_User));
 				init_Vertex_User(vertex);
+
+				if (strcmp(ID, "350622224") == 0)
+					foo = vertex;
+
 				add_Vertex_User(UserTree, vertex, ID);
 				strcpy(vertex->user->signUpDate, signUpDate);
 				strcpy(vertex->user->screenName, screenName);
@@ -735,6 +796,7 @@ int main() {
 					continue;
 				Vertex_Word * wordVertex = RBTsearchWord(WordTree, tweet);
 				Adj_Word * adj, *tmp;
+				Adj_User_Wordlist * list, * tmplist;
 				if (wordVertex == NULL) {
 					wordVertex = malloc(sizeof(Vertex_Word));
 					init_Vertex_Word(wordVertex);
@@ -760,6 +822,11 @@ int main() {
 					wordVertex->first = adj;
 					strcpy(wordVertex->first->ID, ID);
 				}
+				list = malloc(sizeof(Adj_User_Wordlist));
+				tmplist = userVertex->firstWord;
+				list->word = wordVertex->word;
+				userVertex->firstWord = list;
+				list->next = tmplist;
 				++userVertex->user->tweets;
 				++adj->count;
 				++tweetcount;
@@ -786,10 +853,11 @@ int main() {
 				vertex[i] = NULL;
 			FindMostOrLeastUser(UserTree, vertex, UserTree->root, 1, 0);
 			printf("Minimum tweets per user : %d\n", vertex[0]->user->tweets);
-			for (int i = 0; i < 5; ++i)
+			for (int i = 0; i < 1; ++i)
 				vertex[i] = NULL;
 			FindMostOrLeastUser(UserTree, vertex, UserTree->root, 1, 1);
 			printf("Maximum tweets per user : %d\n\n", vertex[0]->user->tweets);
+			printf("%d\n", tweetcount);
 			break;
 		case 2:
 			for (int i = 0; i < 5; ++i)
@@ -876,13 +944,16 @@ int main() {
 			for (adj = tmp; adj; adj = tmp) {
 				user = RBTsearchID(UserTree, adj->ID);
 				tmp = tmp->next;
-				printf("%s\n", RBTsearchID(UserTree,adj->ID)->user->screenName);
+				if (user == NULL)
+					continue;
+				
+				printf("%s\n", user->user->screenName);
 				tweetcount -= user->user->tweets; //유저가 한 트윗수만큼 전체 트윗수 감소
 				deleteFriendship(user, UserTree->root, &friendcount); //유저를 친구로 두고 있는것을 모두 삭제
-				RBT_Delete_User(UserTree, user,&friendcount); //유저삭제
-				free(adj);
+				RBT_Delete_User(UserTree, user,&friendcount,WordTree); //유저삭제
+				free(user->user);
+				free(user);
 				--usercount; //전체 유저수 감소
-
 				--VertexWord->word->count;
 			}
 			printf("\n");
