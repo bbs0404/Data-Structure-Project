@@ -86,6 +86,7 @@ void LRotate_User(RBT_User * tree, Vertex_User * x) {
 	if (y->left != NULL)
 		y->left->parent = x;
 	y->parent = x->parent;
+
 	if (x->parent == NULL)
 		tree->root = y;
 	else if (x == x->parent->left)
@@ -97,12 +98,14 @@ void LRotate_User(RBT_User * tree, Vertex_User * x) {
 }
 
 void RRotate_User(RBT_User * tree, Vertex_User * x) {
-	Vertex_User * y;
-	y = x->left;
+	Vertex_User * y = x->left;
+	if (y == NULL)
+		return;
 	x->left = y->right;
 	if (y->right != NULL)
 		y->right->parent = x;
 	y->parent = x->parent;
+
 	if (x->parent == NULL)
 		tree->root = y;
 	else if (x == x->parent->left)
@@ -355,34 +358,34 @@ void RB_Del_FixUp_User(RBT_User * tree, Vertex_User * x, Vertex_User * parent) {
 	while (x != tree->root && (x == NULL || x->color == BLACK)) {
 		if (x == parent->left) {
 			w = parent->right;
-			if (w != NULL && w->color == RED) {
+			if (w->color == RED) {
 				w->color = BLACK;
 				parent->color = RED;
 				LRotate_User(tree, parent);
 				w = parent->right;
 			}
-			if (w != NULL && w->left->color == BLACK && w->right->color == BLACK) {
+			if ((w->left == NULL || w->left->color == BLACK) && (w->right == NULL || w->right->color == BLACK)) {
 				w->color = RED;
 				x = parent;
 				parent = x->parent;
 			}
-			else if (w != NULL && w->right->color == BLACK) {
-				w->left->color = BLACK;
-				w->color = RED;
-				RRotate_User(tree, w);
-				w = parent->right;
-			}
-			if (w != NULL)
+			else {
+				if ((w->right == NULL || w->right->color == BLACK)) {
+					w->left->color = BLACK;
+					w->color = RED;
+					RRotate_User(tree, w);
+					w = parent->right;
+				}
 				w->color = parent->color;
-			parent->color = BLACK;
-			if (w != NULL)
+				parent->color = BLACK;
 				w->right->color = BLACK;
-			LRotate_User(tree, parent);
-			x = tree->root;
+				LRotate_User(tree, parent);
+				x = tree->root;
+			}
 		}
 		else {
 			w = parent->left;
-			if (w != NULL && w->color == RED) {
+			if (w->color == RED) {
 				w->color = BLACK;
 				parent->color = RED;
 				RRotate_User(tree, parent);
@@ -401,11 +404,9 @@ void RB_Del_FixUp_User(RBT_User * tree, Vertex_User * x, Vertex_User * parent) {
 					LRotate_User(tree, w);
 					w = parent->left;
 				}
-				if (w != NULL)
-					w->color = parent->color;
+				w->color = parent->color;
 				parent->color = BLACK;
-				if (w->left != NULL)
-					w->left->color = BLACK;
+				w->left->color = BLACK;
 				RRotate_User(tree, parent);
 				x = tree->root;
 			}
@@ -413,36 +414,32 @@ void RB_Del_FixUp_User(RBT_User * tree, Vertex_User * x, Vertex_User * parent) {
 	}
 	x->color = BLACK;
 }
+Vertex_User * Tree_Minimum_User(RBT_User * tree, Vertex_User * vertex) {
+	while (vertex->left != NULL && vertex)
+		vertex = vertex->left;
+	return vertex;
+}
 
 void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Word * wordTree) {
-	Vertex_User * y = z, *x, *parent;
-	int origin_color = z->color;
-	if (z == NULL)
-		return;
+	Vertex_User * y = z, * x, * parent;
+	int origin_color = y->color;
 	if (z->left == NULL) {
 		x = z->right;
-		parent = z;
+		parent = z->parent;
 		TransPlant_User(tree, z, z->right);
 	}
 	else if (z->right == NULL) {
 		x = z->left;
-		parent = z;
+		parent = z->parent;
 		TransPlant_User(tree, z, z->left);
 	}
 	else {
-		y = z->right;
-		while (y->left != NULL) {
-			y = y->left;
-		}
+		y = Tree_Minimum_User(tree,z->right);
 		origin_color = y->color;
 		x = y->right;
-		parent = y;
-		if (y->parent == z) {
-			if (x != NULL) {
-				x->parent = y;
-			}
+		parent = y->parent;
+		if (y->parent == z)
 			parent = y;
-		}
 		else {
 			TransPlant_User(tree, y, y->right);
 			y->right = z->right;
@@ -453,6 +450,8 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Wo
 		y->left->parent = y;
 		y->color = z->color;
 	}
+	if (origin_color == BLACK)
+		RB_Del_FixUp_User(tree,x,parent);
 
 	Adj_User *tmp = z->first, *adj;
 	for (adj = tmp; adj; adj = tmp) {
@@ -475,7 +474,7 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Wo
 					if (strcmp(adjW->ID, z->user->ID) == 0) {
 						if (preW == NULL)
 							vertexW->first = adjW->next;
-						else 
+						else
 							preW->next = adjW->next;
 						vertexW->word->count -= adjW->count;
 						break;
@@ -488,13 +487,11 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Wo
 			else
 				prelist->next = list->next;
 			free(list);
+			preW = NULL;
 			continue;
 		}
 		prelist = list;
 	}
-
-	if (origin_color == BLACK)
-		RB_Del_FixUp_User(tree, x, parent);
 }
 
 void FindMostTweet(RBT_Word * tree, Vertex_Word * vertices[], Vertex_Word * vertex) {
@@ -687,13 +684,13 @@ void FindMinOrMaxFriend(RBT_User * tree, int count, Vertex_User * vertex, Vertex
 	}
 }
 
-void deleteFriendship(Vertex_User * delVertex, Vertex_User * curVertex, int * friendcount) {
+void deleteFriendship(Vertex_User * delVertex, Vertex_User * curVertex) {
 	Adj_User * adj, * prev = NULL;
 	if (curVertex != NULL) {
 		for (adj = curVertex->first; adj; prev = adj, adj = adj->next) {
 			if (strcmp(delVertex->user->ID, adj->ID) == 0) {
 				--curVertex->friend;
-				--(*friendcount);
+				--friendcount;
 				if (prev == NULL) {
 					curVertex->first = adj->next;
 					free(adj);
@@ -706,8 +703,8 @@ void deleteFriendship(Vertex_User * delVertex, Vertex_User * curVertex, int * fr
 				}
 			}
 		}
-		deleteFriendship(delVertex, curVertex->left, friendcount);
-		deleteFriendship(delVertex, curVertex->right, friendcount);
+		deleteFriendship(delVertex, curVertex->left);
+		deleteFriendship(delVertex, curVertex->right);
 	}
 }
 
@@ -739,7 +736,7 @@ int main() {
 		case 0:
 			usercount = friendcount = tweetcount = 0;
 			printf("fetching data from 'user.txt'...");
-			fp = fopen("user.txt", "r");
+			fp = fopen("user2.txt", "r");
 			char ID[10], signUpDate[40], screenName[20], fID[10], dummy[10], tweet[500];
 
 			while (fscanf(fp,"%s", ID) != -1) {
@@ -784,7 +781,7 @@ int main() {
 			printf("done!\n");
 
 			printf("fetching data from 'word.txt'...");
-			fp = fopen("word.txt", "r");
+			fp = fopen("word2.txt", "r");
 			while (fscanf(fp,"%s", ID) != -1) {
 				int isSame = 0;
 				fgets(dummy, sizeof(dummy),fp);
@@ -857,7 +854,7 @@ int main() {
 				vertex[i] = NULL;
 			FindMostOrLeastUser(UserTree, vertex, UserTree->root, 1, 1);
 			printf("Maximum tweets per user : %d\n\n", vertex[0]->user->tweets);
-			printf("%d\n", tweetcount);
+			printf("tweets : %d\nusers : %d\n", tweetcount,usercount);
 			break;
 		case 2:
 			for (int i = 0; i < 5; ++i)
@@ -887,8 +884,9 @@ int main() {
 				printf("There is no one that tweets that word\n\n");
 				break;
 			}
+			int i = 1;
 			for (Adj_Word * adj = VertexWord->first; adj; adj = adj->next) {
-				printf("%s %d\n", RBTsearchID(UserTree, adj->ID)->user->screenName,adj->count);
+				printf("%d.%s %d\n",i++, RBTsearchID(UserTree, adj->ID)->user->screenName,adj->count);
 			}
 			printf("\n");
 			break;
@@ -944,12 +942,14 @@ int main() {
 			for (adj = tmp; adj; adj = tmp) {
 				user = RBTsearchID(UserTree, adj->ID);
 				tmp = tmp->next;
-				if (user == NULL)
+				if (user == NULL) {
+					printf("NULL\n");
 					continue;
+				}
 				
-				printf("%s\n", user->user->screenName);
+				//printf("%s\n", user->user->screenName);
 				tweetcount -= user->user->tweets; //유저가 한 트윗수만큼 전체 트윗수 감소
-				deleteFriendship(user, UserTree->root, &friendcount); //유저를 친구로 두고 있는것을 모두 삭제
+				deleteFriendship(user, UserTree->root); //유저를 친구로 두고 있는것을 모두 삭제
 				RBT_Delete_User(UserTree, user,&friendcount,WordTree); //유저삭제
 				free(user->user);
 				free(user);
