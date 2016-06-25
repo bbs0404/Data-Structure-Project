@@ -420,7 +420,13 @@ Vertex_User * Tree_Minimum_User(RBT_User * tree, Vertex_User * vertex) {
 	return vertex;
 }
 
-void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Word * wordTree) {
+Vertex_Word * Tree_Minimum_Word(RBT_Word * tree, Vertex_Word * vertex) {
+	while (vertex->left != NULL && vertex)
+		vertex = vertex->left;
+	return vertex;
+}
+
+void RBT_Delete_User(RBT_User * tree, Vertex_User * z, RBT_Word * wordTree) {
 	Vertex_User * y = z, * x, * parent;
 	int origin_color = y->color;
 	if (z->left == NULL) {
@@ -458,7 +464,7 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Wo
 		if (tmp != NULL) {
 			tmp = tmp->next;
 			free(adj);
-			--(*friendcount);
+			--friendcount;
 		}
 	}
 	Adj_User_Wordlist *list, *tmplist = z->firstWord, *prelist = NULL;
@@ -468,6 +474,8 @@ void RBT_Delete_User(RBT_User * tree, Vertex_User * z, int * friendcount, RBT_Wo
 		if (tmplist != NULL) {
 			tmplist = tmplist->next;
 			vertexW = RBTsearchWord(wordTree, list->word);
+			//if (!vertexW)
+			//	break;
 			for (adjW = tmpW = vertexW->first; adjW; adjW = tmpW) {
 				if (tmpW != NULL) {
 					tmpW = tmpW->next;
@@ -586,50 +594,56 @@ void RB_Del_FixUp_Word(RBT_Word * tree, Vertex_Word * vertex) {
 	vertex->color = BLACK;
 }
 
-void RBT_Delete_Word(RBT_Word * tree, RBT_User * usertree, Vertex_Word * vertex) {
-	Vertex_Word * vertex2 = vertex, *vertex3;
-	int origin_color = vertex->color;
-	if (vertex == NULL)
-		return;
-	if (vertex->left == NULL) {
-		vertex3 = vertex->right;
-		TransPlant_Word(tree, vertex, vertex->right);
+void RBT_Delete_Word(RBT_Word * tree, RBT_User * usertree, Vertex_Word * z) {
+	Vertex_Word * y = z, *x,*parent;
+	int origin_color = z->color;
+	if (z->left == NULL) {
+		x = z->right;
+		parent = z->parent;
+		TransPlant_Word(tree, z, z->right);
 	}
-	else if (vertex->right == NULL) {
-		vertex3 = vertex->left;
-		TransPlant_Word(tree, vertex, vertex->left);
+	else if (z->right == NULL) {
+		x = z->left;
+		parent = z->parent;
+		TransPlant_Word(tree, z, z->left);
 	}
 	else {
-		vertex2 = vertex->right;
-		while (vertex2->left != NULL) {
-			vertex2 = vertex2->left;
+		y = Tree_Minimum_Word(tree, z->right);
+		origin_color = y->color;
+		x = y->right;
+		parent = y->parent;
+		if (y->parent == z)
+			parent = y;
+		else {
+			TransPlant_Word(tree, y, y->right);
+			y->right = z->right;
+			y->right->parent = y;
 		}
-		origin_color = vertex2->color;
-		vertex3 = vertex2->right;
-		if (vertex2->parent == vertex)
-			if (vertex3 != NULL)
-				vertex3->parent = vertex2;
-			else {
-				TransPlant_Word(tree, vertex2, vertex2->right);
-				vertex2->right = vertex->right;
-				if (vertex2->right != NULL)
-					vertex2->right->parent = vertex2;
-			}
-			TransPlant_Word(tree, vertex, vertex2);
-			vertex2->left = vertex->left;
-			vertex2->left->parent = vertex2;
-			vertex2->color = vertex->color;
+		TransPlant_Word(tree, z, y);
+		y->left = z->left;
+		y->left->parent = y;
+		y->color = z->color;
 	}
-	Adj_Word *tmp = vertex->first, *adj;
+	if (origin_color == BLACK)
+		RB_Del_FixUp_Word(tree, x, parent);
+	Adj_Word *tmp = z->first, *adj;
 	for (adj = tmp; adj; adj = tmp) {
+		Adj_User_Wordlist * list, * prelist;
 		tmp = tmp->next;
 		RBTsearchID(usertree, adj->ID)->user->tweets -= adj->count;
+		for (list = RBTsearchID(usertree, adj->ID)->firstWord; list; list = list->next) {
+			if (strcmp(z->word, list->word) == 0)
+				break;
+			prelist = list;
+		}
+		if (list != NULL) {
+			prelist->next = list->next;
+		}
+		free(list);
 		free(adj);
 	}
-	free(vertex->word);
-	free(vertex);
-	if (origin_color == BLACK)
-		RB_Del_FixUp_Word(tree, vertex3);
+	free(z->word);
+	free(z);
 }
 
 void FindMostOrLeastUser(RBT_User * tree, Vertex_User* vertices[], Vertex_User * vertex, int sz, int option) {
@@ -719,8 +733,8 @@ int main() {
 		//유저를 지울때 word에 있는 adj를 없애야 한다.
 		printf("0. Read data files\n1. display statistics\n2. Top 5 most tweeted words\n");
 		printf("3. Top 5 most tweeted users\n4. Find users who tweeted a word\n5. Find all people who are friends of the above users\n");
-		printf("6. Delete all mentions of a word\n7. Delete all users who mentioned a word\n8. Find strongly connected components\n");
-		printf("9. Find shortest path from a given user\n\99. Quit\nSelect Menu: ");
+		printf("6. Delete all mentions of a word\n7. Delete all users who mentioned a word\n8. Find strongly connected components(undone)\n");
+		printf("9. Find shortest path from a given user(undone)\n\99. Quit\nSelect Menu: ");
 		Vertex_Word * VertexWord;
 		char str[30];
 		FILE * fp;
@@ -736,7 +750,7 @@ int main() {
 		case 0:
 			usercount = friendcount = tweetcount = 0;
 			printf("fetching data from 'user.txt'...");
-			fp = fopen("user2.txt", "r");
+			fp = fopen("user.txt", "r");
 			char ID[10], signUpDate[40], screenName[20], fID[10], dummy[10], tweet[500];
 
 			while (fscanf(fp,"%s", ID) != -1) {
@@ -758,7 +772,7 @@ int main() {
 			printf("done!\n");
 
 			printf("fetching data from 'friend.txt'...");
-			fp = fopen("friend2.txt", "r");
+			fp = fopen("friend.txt", "r");
 			//friend.txt
 			while (fscanf(fp,"%s %s", ID, fID) != -1) {
 				Vertex_User * self, *friend;
@@ -781,7 +795,7 @@ int main() {
 			printf("done!\n");
 
 			printf("fetching data from 'word.txt'...");
-			fp = fopen("word2.txt", "r");
+			fp = fopen("word.txt", "r");
 			while (fscanf(fp,"%s", ID) != -1) {
 				int isSame = 0;
 				fgets(dummy, sizeof(dummy),fp);
@@ -823,7 +837,12 @@ int main() {
 				tmplist = userVertex->firstWord;
 				list->word = wordVertex->word;
 				userVertex->firstWord = list;
-				list->next = tmplist;
+				if (tmplist != NULL) {
+					list->next = tmplist;
+				}
+				else {
+					list->next = NULL;
+				}
 				++userVertex->user->tweets;
 				++adj->count;
 				++tweetcount;
@@ -910,14 +929,10 @@ int main() {
 			}
 			break;
 		case 6: {
-			//word vertex 삭제
-			//word 안의 adj를 free시켜야한다 done
-			//adj를 통해 유저 트윗수를 감소시켜야 한다 done
-			//전체 트윗수를 감소시켜야 한다 done
 			printf("Type a word : ");
 			scanf("%s", tweet);
 			VertexWord = RBTsearchWord(WordTree, tweet);
-			if (VertexWord == NULL) {
+			if (VertexWord == NULL || VertexWord->first == NULL) {
 				printf("\nThere is no mention that contains \"%s\"\n\n", tweet);
 				break;
 			}
@@ -937,7 +952,6 @@ int main() {
 				printf("\nThere is no one who mentioned that word\n\n");
 				break;
 			}
-			printf("These users are deleted :\n");
 			Adj_Word * adj, *tmp = VertexWord->first;
 			for (adj = tmp; adj; adj = tmp) {
 				user = RBTsearchID(UserTree, adj->ID);
@@ -946,11 +960,9 @@ int main() {
 					printf("NULL\n");
 					continue;
 				}
-				
-				//printf("%s\n", user->user->screenName);
 				tweetcount -= user->user->tweets; //유저가 한 트윗수만큼 전체 트윗수 감소
 				deleteFriendship(user, UserTree->root); //유저를 친구로 두고 있는것을 모두 삭제
-				RBT_Delete_User(UserTree, user,&friendcount,WordTree); //유저삭제
+				RBT_Delete_User(UserTree, user, WordTree); //유저삭제
 				free(user->user);
 				free(user);
 				--usercount; //전체 유저수 감소
@@ -958,9 +970,8 @@ int main() {
 			}
 			printf("\n");
 			VertexWord->first = NULL;
-			
+			printf("Users are deleted :\n");
 			isVerticesReady = 0;//3번을 다시 하도록 만들어야 한다.
-
 		}
 			break;
 		case 8:
